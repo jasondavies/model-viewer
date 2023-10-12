@@ -410,7 +410,7 @@ class GltfParser:
 		return None
 	##tex_coord_ow  tuple (tex_cord_accessor_idx, (scalex,scaley))
 	#returns a set up TexBitMap() from BitmapBuffer from a gltf texture dictionary
-	def _make_texture(self, renderer, prim, tex_dict, color_mult = vray.AColor(1,1,1,1),transfer_func = 1,gamma = 1):
+	def _make_texture(self, renderer, prim, tex_dict, color_mult = vray.AColor(1,1,1,1), transfer_func = 1, gamma = 1):
 		if tex_dict != None:
 	
 			tex_source_idx = tex_dict.get('index')
@@ -425,7 +425,7 @@ class GltfParser:
 						wrapU=1
 					elif gltf_wrapS==33071: # Clamp to edge; V-Ray doesn't really have a matching mode, so just disable wrapping
 						wrapU=0
-					elif gltf_wrapS== 33648: # Mirrored repeat
+					elif gltf_wrapS==33648: # Mirrored repeat
 						wrapU=2
 
 					gltf_wrapT=self.samplers[samplerIdx].wrapT
@@ -433,7 +433,7 @@ class GltfParser:
 						wrapV=1
 					elif gltf_wrapT==33071: # Clamp to edge; V-Ray doesn't really have a matching mode, so just disable wrapping
 						wrapV=0
-					elif gltf_wrapT== 33648: # Mirrored repeat
+					elif gltf_wrapT==33648: # Mirrored repeat
 						wrapV=2
 
 				tex_idx = self.textures[tex_source_idx].source
@@ -457,7 +457,6 @@ class GltfParser:
 				uvw_gen = renderer.classes.UVWGenChannel()
 				uvw_gen.uvw_channel = -1
 				uvw_gen.uvw_transform = TEXTURE_FLIP_TRANSFORM
-				#uvw_gen.use_double_sided_mode = True
 				uvw_gen.wrap_mode = 0
 				uvw_gen.wrap_u=wrapU
 				uvw_gen.wrap_v=wrapV
@@ -502,18 +501,7 @@ class GltfParser:
 
 							new_tex_coord = tex_trans_ext.get('texCoord')
 							if new_tex_coord != None:
-								 
-								meshUvs = vray.VectorList()
-								
-								# for uvVal in self.accessors[new_tex_coord].data:
-								# 	meshUvs.append(vray.Vector(uvVal[0],uvVal[1],0.0))
-
-								# if tex_uv_channel_idx != -1:
-								# 	prim.vray_node_ref.geometry.map_channels[tex_uv_channel_idx] = meshUvs
-								# else:
-								# 	channels = []
-								# 	channels.append(meshUvs)
-								# 	prim.vray_node_ref.geometry.map_channels = channels
+								uvw_gen.uvw_channel = new_tex_coord
 
 				texture.uvwgen = uvw_gen
 
@@ -621,6 +609,19 @@ class GltfParser:
 				refract_map.color_a = brdf.diffuse
 				refract_map.color_b = vray.AColor(gltf_transmission_factor,gltf_transmission_factor,gltf_transmission_factor,1)
 				brdf.refract = refract_map.product
+
+	def _create_KHR_materials_specular(self, renderer, prim, gltf_mat, brdf, channel_names):
+		gltf_specular_factor = gltf_mat.get('specularFactor', 1.0)
+		gltf_specular_texture = gltf_mat.get('specularTexture')
+		gltf_specular_color_factor = gltf_mat.get('specularColorFactor', vray.Color(1.0, 1.0, 1.0))
+		gltf_specular_color_texture = gltf_mat.get('specularColorTexture')
+
+		if gltf_specular_color_texture != None:
+			gltf_specular_color_texture = self._make_texture(renderer, prim, gltf_specular_color_texture, transfer_func=2)
+			brdf.reflect = gltf_specular_color_texture
+			brdf.reflect.color_mult = vray.AColor(gltf_specular_color_factor[0], gltf_specular_color_factor[1], gltf_specular_color_factor[2], gltf_specular_factor)
+		else:
+			brdf.reflect = vray.AColor(gltf_specular_color_factor[0], gltf_specular_color_factor[1], gltf_specular_color_factor[2], gltf_specular_factor)
 
 	# https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_pbrSpecularGlossiness
 	# gltf_mat - the extension passed as dictionary (json)
@@ -798,12 +799,64 @@ class GltfParser:
 					self._create_KHR_materials_pbrSpecularGlossiness(renderer, prim, gltf_mat.extensions.get('KHR_materials_pbrSpecularGlossiness'), brdf, channel_names)
 				if gltf_ext == 'KHR_materials_transmission':
 					self._create_KHR_materials_transmission(renderer, gltf_mat.extensions.get('KHR_materials_transmission'), brdf)
+
 				if gltf_ext=='KHR_materials_clearcoat':
 					self._create_KHR_materials_clearcoat(renderer, prim, gltf_mat.extensions.get('KHR_materials_clearcoat'), brdf)
+
 				if gltf_ext=='KHR_materials_sheen':
 					self._create_KHR_materials_sheen(renderer, prim, gltf_mat.extensions.get('KHR_materials_sheen'), brdf)
+
+				if gltf_ext=='KHR_materials_volume':
+					o = gltf_mat.extensions.get('KHR_materials_volume')
+					is_thin_walled = o.get('thicknessFactor', 0.0) == 0.0
+					if is_thin_walled:
+						brdf.translucency = 0
+				#		brdf.refract_thin_walled = True
+				#		brdf.refract_affect_shadows = True
+					else:
+						brdf.translucency = 4
+					brdf.fog_color = o.get('attenuationColor', vray.AColor(1.0, 1.0, 1.0))
+					brdf.fog_depth = o.get('attenuationDistance', float('inf'))
+					brdf.fog_unit_scale_on = True
+
+				if gltf_ext=='KHR_materials_ior':
+					brdf.refract_ior = gltf_mat.extensions.get('KHR_materials_ior').get('ior')
+
 				if gltf_ext=='KHR_materials_emissive_strength':
 					emissive_strength = gltf_mat.extensions.get('KHR_materials_emissive_strength').get('emissiveStrength')
+
+				if gltf_ext=='KHR_materials_iridescence':
+					o = gltf_mat.extensions.get('KHR_materials_iridescence')
+					iridescence_factor = o.get('iridescenceFactor', 0.0)
+					if iridescence_factor == 1.0 and o.get('iridescenceTexture') is None:
+						brdf.thin_film_on = True
+						brdf.thin_film_ior = o.get('iridescenceIor', 1.3)
+						brdf.thin_film_thickness_min = o.get('iridescenceThicknessMinimum', 100.0)
+						brdf.thin_film_thickness_max = o.get('iridescenceThicknessMaximum', 400.0)
+						if o.get('iridescenceThicknessTexture') != None:
+							xxx = 0
+							#brdf.thin_film_thickness = self._make_texture(renderer, prim, o.get('iridescenceThicknessTexture'), transfer_func=0)
+						else:
+							xxx = 0
+							#brdf.thin_film_thickness = 1.0
+					else:
+						if iridescence_factor != 1.0:
+							print("Warning: unsupported iridescenceFactor != 1.0")
+						if o.get('iridescenceTexture') != None:
+							print("Warning: unsupported iridescenceTexture")
+
+				if gltf_ext == 'KHR_materials_specular':
+					self._create_KHR_materials_specular(renderer, prim, gltf_mat.extensions.get('KHR_materials_specular'), brdf, channel_names)
+
+				if gltf_ext=='KHR_materials_anisotropy':
+					o = gltf_mat.extensions.get('KHR_materials_anisotropy')
+					anisotropy_strength = o.get('anisotropyStrength', 0.0)
+					anisotropy_rotation = o.get('anisotropyRotation', 0.0)
+					# TODO anisotropyTexture
+					brdf.anisotropy = anisotropy_strength
+					# TODO anisotropyRotation is specified in radians counterclockwise from tangent
+					# I believe anisotropy_rotation has to be in the range [0.0, 1.0] but not sure if this represents 2*PI radians or PI/2 radians
+					brdf.anisotropy_rotation = anisotropy_rotation / (2.0 * math.pi)
 
 		# Apply vertex color to the diffuse texture
 		applyVertexColor(renderer, brdf, channel_names)
@@ -822,7 +875,7 @@ class GltfParser:
 			brdf.bump_type=1
 
 		#emissive tex
-		emissive_tex = self._make_texture(renderer, prim, gltf_mat.emissiveTexture, transfer_func = 2)
+		emissive_tex = self._make_texture(renderer, prim, gltf_mat.emissiveTexture, transfer_func=2)
 		emissive_factor = gltf_mat.emissiveFactor
 		if emissive_tex != None:
 			if emissive_factor != None:

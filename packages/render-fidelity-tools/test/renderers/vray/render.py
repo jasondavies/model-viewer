@@ -88,7 +88,6 @@ def main():
           }
     """
     config = json.loads(sys.argv[1])
-    print(config)
 
     scenario = config["scenario"]
     outpath = config["outputFile"]
@@ -109,7 +108,6 @@ def main():
     renderer.setOnLogMessage(dumpMsg)
     renderer.renderMode = "production"
     renderer.size = (width, height)
-    renderer.setInteractiveNoiseThreshold(0.01)
 
     # White background
     environment = renderer.classes.SettingsEnvironment.getInstanceOrCreate()
@@ -155,6 +153,8 @@ def main():
     parser._setup_frame(0, renderer)
     renderer.startSync()
     renderer.waitForRenderEnd()
+    #import time
+    #time.sleep(20)
     image = np.asarray(renderer.getImage()).reshape((height, width, 4))
 
     # tonemap

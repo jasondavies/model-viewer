@@ -45,10 +45,7 @@
       "model": "../../../shared-assets/models/glTF-Sample-Models/2.0/DragonAttenuation/glTF/DragonAttenuation.gltf",
       "orbit": {
         "radius": 5
-      },
-      "exclude": [
-        "vray"
-      ]
+      }
     },
     {
       "name": "khronos-IridescentDishWithOlives",
@@ -66,8 +63,7 @@
         "y": 0.11
       },
       "exclude": [
-        "babylon",
-        "vray"
+        "babylon"
       ]
     },
     {
@@ -97,10 +93,7 @@
       },
       "dimensions": {
         "height": 450
-      },
-      "exclude": [
-        "vray"
-      ]
+      }
     },
     {
       "name": "khronos-MaterialsVariantsShoe",
@@ -165,10 +158,7 @@
       "dimensions": {
         "height": 600,
         "width": 1000
-      },
-      "exclude": [
-        "vray"
-      ]
+      }
     },
     {
       "name": "khronos-IridescenceLamp",
@@ -188,8 +178,7 @@
       },
       "exclude": [
         "three-gpu-pathtracer",
-        "stellar",
-        "vray"
+        "stellar"
       ]
     },
     {
@@ -222,10 +211,7 @@
       "dimensions": {
         "height": 700,
         "width": 700
-      },
-      "exclude": [
-        "vray"
-      ]
+      }
     },
     {
       "name": "khronos-EmissiveStrengthTest",
@@ -256,8 +242,7 @@
         "width": 700
       },
       "exclude": [
-        "stellar",
-        "vray"
+        "stellar"
       ]
     },
     {
@@ -276,8 +261,7 @@
         "width": 700
       },
       "exclude": [
-        "stellar",
-        "vray"
+        "stellar"
       ]
     },
     {
@@ -292,8 +276,7 @@
         "width": 1000
       },
       "exclude": [
-        "stellar",
-        "vray"
+        "stellar"
       ]
     },
     {
@@ -371,10 +354,7 @@
         "theta": 2,
         "phi": 70.0,
         "radius": 2.45
-      },
-      "exclude": [
-        "vray"
-      ]
+      }
     },
     {
       "name": "khronos-SheenCloth",
@@ -558,8 +538,7 @@
         "height": 700
       },
       "exclude": [
-        "three-gpu-pathtracer",
-        "vray"
+        "three-gpu-pathtracer"
       ]
     },
     {
@@ -573,10 +552,7 @@
       },
       "target": {
         "y": -0.09
-      },
-      "exclude": [
-        "vray"
-      ]
+      }
     },
     {
       "name": "khronos-AttenuationTest",
@@ -586,10 +562,7 @@
       },
       "orbit": {
         "radius": 22.00
-      },
-      "exclude": [
-        "vray"
-      ]
+      }
     },
     {
       "name": "khronos-SpecularTest",
@@ -604,8 +577,7 @@
         "x": -0.18
       },
       "exclude": [
-        "stellar",
-        "vray"
+        "stellar"
       ]
     },
     {
