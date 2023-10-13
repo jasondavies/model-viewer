@@ -623,6 +623,10 @@ class GltfParser:
 		else:
 			brdf.reflect = vray.AColor(gltf_specular_color_factor[0], gltf_specular_color_factor[1], gltf_specular_color_factor[2], gltf_specular_factor)
 
+	def _create_KHR_materials_ior(self, renderer, prim, gltf_mat, brdf, channel_names):
+		brdf.fresnel_ior = brdf.refract_ior = gltf_mat.get('ior')
+
+
 	# https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_pbrSpecularGlossiness
 	# gltf_mat - the extension passed as dictionary (json)
 	def _create_KHR_materials_pbrSpecularGlossiness(self, renderer, prim, gltf_mat, brdf, channel_names):
@@ -763,6 +767,54 @@ class GltfParser:
 			gltf_sheen_roughness_factor=gltf_mat.get('sheenRoughnessFactor')
 			if gltf_sheen_roughness_factor!=None:
 				brdf.sheen_glossiness=gltf_sheen_roughness_factor
+	
+	# https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_volume
+	# gltf_mat - the extension passed as dictionary (json)
+	def _create_KHR_materials_volume(self, renderer, prim, gltf_mat, brdf):
+		is_thin_walled = gltf_mat.get('thicknessFactor', 0.0) == 0.0
+		if is_thin_walled:
+			brdf.translucency = 0
+	#		brdf.refract_thin_walled = True
+	#		brdf.refract_affect_shadows = True
+		else:
+			brdf.translucency = 4
+		brdf.fog_color = gltf_mat.get('attenuationColor', vray.AColor(1.0, 1.0, 1.0))
+		brdf.fog_depth = gltf_mat.get('attenuationDistance', float('inf'))
+		brdf.fog_unit_scale_on = True
+		brdf.refract_trace = True
+		brdf.refract_depth = 5 
+
+	# https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_iridescence
+	# gltf_mat - the extension passed as dictionary (json)
+	def _create_KHR_materials_iridescence(self, renderer, prim, gltf_mat, brdf):
+		if iridescence_factor == 1.0 and o.get('iridescenceTexture') is None:
+			brdf.thin_film_on = True
+			brdf.thin_film_ior = o.get('iridescenceIor', 1.3)
+			brdf.thin_film_thickness_min = o.get('iridescenceThicknessMinimum', 100.0)
+			brdf.thin_film_thickness_max = o.get('iridescenceThicknessMaximum', 400.0)
+			if o.get('iridescenceThicknessTexture') != None:
+				xxx = 0
+				#brdf.thin_film_thickness = self._make_texture(renderer, prim, o.get('iridescenceThicknessTexture'), transfer_func=0)
+			else:
+				brdf.thin_film_thickness_min = brdf.thin_film_thickness_max # per V-Ray documentation, when there is no texture, min is used, instead of the glTF maximum.
+				xxx = 0
+				#brdf.thin_film_thickness = 1.0
+		else:
+			if iridescence_factor != 1.0:
+				print("Warning: unsupported iridescenceFactor != 1.0")
+			if o.get('iridescenceTexture') != None:
+				print("Warning: unsupported iridescenceTexture")
+
+	# https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_materials_anisotropy
+	# gltf_mat - the extension passed as dictionary (json)
+	def _create_KHR_materials_anisotropy(self, renderer, prim, gltf_mat, brdf):
+		anisotropy_strength = gltf_mat.get('anisotropyStrength', 0.0)
+		anisotropy_rotation = gltf_mat.get('anisotropyRotation', 0.0)
+		# TODO anisotropyTexture
+		brdf.anisotropy = anisotropy_strength
+		# TODO anisotropyRotation is specified in radians counterclockwise from tangent
+		# I believe anisotropy_rotation has to be in the range [0.0, 1.0] but not sure if this represents 2*PI radians or PI/2 radians
+		brdf.anisotropy_rotation = anisotropy_rotation / (2.0 * math.pi)
 
 	def _create_material(self, renderer, prim, channel_names):
 		gltf_mat = self.materials[prim.material]
@@ -776,6 +828,7 @@ class GltfParser:
 		brdf.fresnel = True
 		brdf.option_glossy_fresnel = True # Glossy Fresnel produces a better result for rough reflective surfaces
 		brdf.refract_ior = 1.5 # glTF uses IOR 1.5 by default
+		brdf.fresnel_ior = 1.5
 		brdf.reflect_depth = self.trace_depth
 		brdf.refract_depth = self.trace_depth
 		
@@ -807,58 +860,22 @@ class GltfParser:
 					self._create_KHR_materials_sheen(renderer, prim, gltf_mat.extensions.get('KHR_materials_sheen'), brdf)
 
 				if gltf_ext=='KHR_materials_volume':
-					o = gltf_mat.extensions.get('KHR_materials_volume')
-					is_thin_walled = o.get('thicknessFactor', 0.0) == 0.0
-					if is_thin_walled:
-						brdf.translucency = 0
-				#		brdf.refract_thin_walled = True
-				#		brdf.refract_affect_shadows = True
-					else:
-						brdf.translucency = 4
-					brdf.fog_color = o.get('attenuationColor', vray.AColor(1.0, 1.0, 1.0))
-					brdf.fog_depth = o.get('attenuationDistance', float('inf'))
-					brdf.fog_unit_scale_on = True
-					brdf.refract_trace = True 
+					self._create_KHR_materials_volume(renderer, prim, gltf_mat.extensions.get('KHR_materials_volume'), brdf)
 		
 				if gltf_ext=='KHR_materials_ior':
-					brdf.refract_ior = gltf_mat.extensions.get('KHR_materials_ior').get('ior')
+					self._create_KHR_materials_ior(renderer, prim, gltf_mat.extensions.get('KHR_materials_ior'), brdf)
 
 				if gltf_ext=='KHR_materials_emissive_strength':
 					emissive_strength = gltf_mat.extensions.get('KHR_materials_emissive_strength').get('emissiveStrength')
 
 				if gltf_ext=='KHR_materials_iridescence':
-					o = gltf_mat.extensions.get('KHR_materials_iridescence')
-					iridescence_factor = o.get('iridescenceFactor', 0.0)
-					if iridescence_factor == 1.0 and o.get('iridescenceTexture') is None:
-						brdf.thin_film_on = True
-						brdf.thin_film_ior = o.get('iridescenceIor', 1.3)
-						brdf.thin_film_thickness_min = o.get('iridescenceThicknessMinimum', 100.0)
-						brdf.thin_film_thickness_max = o.get('iridescenceThicknessMaximum', 400.0)
-						if o.get('iridescenceThicknessTexture') != None:
-							xxx = 0
-							#brdf.thin_film_thickness = self._make_texture(renderer, prim, o.get('iridescenceThicknessTexture'), transfer_func=0)
-						else:
-							brdf.thin_film_thickness_min = brdf.thin_film_thickness_max # per V-Ray documentation, when there is no texture, min is used, instead of the glTF maximum.
-							xxx = 0
-							#brdf.thin_film_thickness = 1.0
-					else:
-						if iridescence_factor != 1.0:
-							print("Warning: unsupported iridescenceFactor != 1.0")
-						if o.get('iridescenceTexture') != None:
-							print("Warning: unsupported iridescenceTexture")
+					self._create_KHR_materials_iridescence(renderer, prim, gltf_mat.extensions.get('KHR_materials_iridescence'), brdf)
 
 				if gltf_ext == 'KHR_materials_specular':
 					self._create_KHR_materials_specular(renderer, prim, gltf_mat.extensions.get('KHR_materials_specular'), brdf, channel_names)
 
 				if gltf_ext=='KHR_materials_anisotropy':
-					o = gltf_mat.extensions.get('KHR_materials_anisotropy')
-					anisotropy_strength = o.get('anisotropyStrength', 0.0)
-					anisotropy_rotation = o.get('anisotropyRotation', 0.0)
-					# TODO anisotropyTexture
-					brdf.anisotropy = anisotropy_strength
-					# TODO anisotropyRotation is specified in radians counterclockwise from tangent
-					# I believe anisotropy_rotation has to be in the range [0.0, 1.0] but not sure if this represents 2*PI radians or PI/2 radians
-					brdf.anisotropy_rotation = anisotropy_rotation / (2.0 * math.pi)
+					self._create_KHR_materials_anisotropy(renderer, prim, gltf_mat.extensions.get('KHR_materials_anisotropy'), brdf)
 
 		# Apply vertex color to the diffuse texture
 		applyVertexColor(renderer, brdf, channel_names)
