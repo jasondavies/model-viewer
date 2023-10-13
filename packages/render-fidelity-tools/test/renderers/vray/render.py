@@ -119,6 +119,18 @@ def main():
     photometricSettings.scene_upDir = vray.Vector(0.0, 1.0, 0.0) # glTF is Y-up
     photometricSettings.meters_scale = 1.0 # Assume 1 unit is 1 meter
 
+    # Optimal speed/quality settings from here:
+    # https://docs.chaos.com/display/APPSDK/Introduction+to+Global+Illumination#heading-LightCache-2
+    
+     # Set the sampler type to adaptive(buckets).
+    sis = renderer.classes.SettingsImageSampler.getInstanceOrCreate()
+    sis.type = 1
+
+    # Disable light cache so we get buckets straight away.
+    sgi = renderer.classes.SettingsGI.getInstanceOrCreate()
+    sgi.primary_engine = 0
+    sgi.secondary_engine = 3
+    
     # Camera
     theta = orbit["theta"] * math.pi / 180.0
     phi = orbit["phi"] * math.pi / 180.0

@@ -818,7 +818,8 @@ class GltfParser:
 					brdf.fog_color = o.get('attenuationColor', vray.AColor(1.0, 1.0, 1.0))
 					brdf.fog_depth = o.get('attenuationDistance', float('inf'))
 					brdf.fog_unit_scale_on = True
-
+					brdf.refract_trace = True 
+		
 				if gltf_ext=='KHR_materials_ior':
 					brdf.refract_ior = gltf_mat.extensions.get('KHR_materials_ior').get('ior')
 
