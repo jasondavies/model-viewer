@@ -838,6 +838,7 @@ class GltfParser:
 							xxx = 0
 							#brdf.thin_film_thickness = self._make_texture(renderer, prim, o.get('iridescenceThicknessTexture'), transfer_func=0)
 						else:
+							brdf.thin_film_thickness_min = brdf.thin_film_thickness_max # per V-Ray documentation, when there is no texture, min is used, instead of the glTF maximum.
 							xxx = 0
 							#brdf.thin_film_thickness = 1.0
 					else:
