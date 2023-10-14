@@ -818,7 +818,6 @@ class GltfParser:
 					brdf.fog_color = o.get('attenuationColor', vray.AColor(1.0, 1.0, 1.0))
 					brdf.fog_depth = o.get('attenuationDistance', float('inf'))
 					brdf.fog_unit_scale_on = True
-					brdf.refract_trace = True 
 		
 				if gltf_ext=='KHR_materials_ior':
 					brdf.refract_ior = gltf_mat.extensions.get('KHR_materials_ior').get('ior')
@@ -835,12 +834,12 @@ class GltfParser:
 						brdf.thin_film_thickness_min = o.get('iridescenceThicknessMinimum', 100.0)
 						brdf.thin_film_thickness_max = o.get('iridescenceThicknessMaximum', 400.0)
 						if o.get('iridescenceThicknessTexture') != None:
-							xxx = 0
-							#brdf.thin_film_thickness = self._make_texture(renderer, prim, o.get('iridescenceThicknessTexture'), transfer_func=0)
+							pass
+							# brdf.thin_film_thickness = self._make_texture(renderer, prim, o.get('iridescenceThicknessTexture'), transfer_func=0)
 						else:
-							brdf.thin_film_thickness_min = brdf.thin_film_thickness_max # per V-Ray documentation, when there is no texture, min is used, instead of the glTF maximum.
-							xxx = 0
-							#brdf.thin_film_thickness = 1.0
+							# If brdf.thin_film_thickness is not set, then brdf.thin_film_thickness_min specifies the film thickness.
+							# glTF's KHR_materials_iridescence specifies the film thickness via iridescenceThicknessMaximum instead.
+							brdf.thin_film_thickness_min = brdf.thin_film_thickness_max
 					else:
 						if iridescence_factor != 1.0:
 							print("Warning: unsupported iridescenceFactor != 1.0")

@@ -122,7 +122,7 @@ def main():
     # Optimal speed/quality settings from here:
     # https://docs.chaos.com/display/APPSDK/Introduction+to+Global+Illumination#heading-LightCache-2
     
-     # Set the sampler type to adaptive(buckets).
+    # Set the sampler type to adaptive(buckets).
     sis = renderer.classes.SettingsImageSampler.getInstanceOrCreate()
     sis.type = 1
 
